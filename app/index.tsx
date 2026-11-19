@@ -1,43 +1,87 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Pressable } from 'react-native';
-import { Link } from 'expo-router';
+import {
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
+  TextInput,
+  ActivityIndicator,
+  Pressable,
+} from 'react-native';
+import { router } from 'expo-router';
+import type { CampusEvent } from '../../src/data/events';
+import { EventRow } from '../../src/components/EventRow';
+import { useEvents } from '../../src/hooks/useEvents';
 
-export default function HomeScreen() {
-  const [likes, setLikes] = useState(0);
+export default function EventsScreen() {
+  const { data, isPending, isError, error, refetch, isRefetching } = useEvents();
+  const [savedIds, setSavedIds] = useState<number[]>([]);
+  const [query, setQuery] = useState('');
+
+  const handleToggleSave = (id: number) => {
+    setSavedIds((prev) =>
+      prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
+    );
+  };
+
+  if (isPending) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.statusText}>Loading events</Text>
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorTitle}>Could not load events</Text>
+        <Text style={styles.errorMessage}>{error.message}</Text>
+        <Pressable
+          onPress={() => refetch()}
+          style={({ pressed }) => [styles.retryButton, pressed && styles.retryPressed]}
+        >
+          <Text style={styles.retryText}>Try again</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const eventsList = data ?? [];
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredEvents = eventsList.filter((event) =>
+    event.title.toLowerCase().includes(normalizedQuery)
+  );
+
+  const renderItem = ({ item }: { item: CampusEvent }) => (
+    <EventRow
+      event={item}
+      isSaved={savedIds.includes(item.id)}
+      onPress={() => router.push(`/events/${item.id}`)}
+      onLongPress={() => handleToggleSave(item.id)}
+    />
+  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Hello, World!</Text>
-      <Text style={styles.name}>Temirlan Nussipkozha</Text>
+      <Text style={styles.hint}>Long-press an event to save it. Saved: {savedIds.length}</Text>
 
-      <Text style={styles.likesText}>Likes: {likes}</Text>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search events"
+        style={styles.searchInput}
+      />
 
-      <Pressable
-        onPress={() => setLikes(likes + 1)}
-        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-      >
-        <Text style={styles.buttonText}>Like</Text>
-      </Pressable>
-
-      <Pressable
-        onPress={() => setLikes(0)}
-        disabled={likes === 0}
-        style={({ pressed }) => [
-          styles.resetButton,
-          likes === 0 && styles.disabledButton,
-          pressed && likes !== 0 && styles.buttonPressed,
-        ]}
-      >
-        <Text style={styles.resetButtonText}>Reset</Text>
-      </Pressable>
-
-      <Link href="/events" asChild>
-        <Pressable
-          style={({ pressed }) => [styles.eventsButton, pressed && styles.buttonPressed]}
-        >
-          <Text style={styles.buttonText}>Events</Text>
-        </Pressable>
-      </Link>
+      <FlatList
+        data={filteredEvents}
+        keyExtractor={(e) => String(e.id)}
+        renderItem={renderItem}
+        refreshing={isRefetching}
+        onRefresh={() => refetch()}
+        ListEmptyComponent={<Text style={styles.emptyText}>No events match</Text>}
+      />
     </View>
   );
 }
@@ -45,69 +89,68 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+  },
+  centerContainer: {
+    flex: 1,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  name: {
-    fontSize: 32,
-    marginBottom: 24,
+  statusText: {
+    marginTop: 12,
+    fontSize: 16,
     color: '#333',
   },
-  likesText: {
-    fontSize: 22,
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#111',
+  },
+  errorMessage: {
+    fontSize: 15,
+    color: '#555',
     marginBottom: 16,
+    textAlign: 'center',
   },
-  button: {
+  retryButton: {
+    minHeight: 44,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#007AFF',
-    minHeight: 44,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
     borderRadius: 8,
-    marginBottom: 12,
-    width: 220,
   },
-  resetButton: {
-    backgroundColor: '#FF3B30',
-    minHeight: 44,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 8,
-    marginBottom: 12,
-    width: 220,
-  },
-  eventsButton: {
-    backgroundColor: '#28A745',
-    minHeight: 44,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 8,
-    marginTop: 8,
-    width: 220,
-  },
-  disabledButton: {
-    backgroundColor: '#cccccc',
-  },
-  buttonPressed: {
+  retryPressed: {
     opacity: 0.75,
   },
-  buttonText: {
+  retryText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
   },
-  resetButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+  hint: {
+    fontSize: 14,
+    color: '#444',
+    marginBottom: 10,
+  },
+  searchInput: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    marginBottom: 14,
+    fontSize: 16,
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#666',
+    marginTop: 24,
   },
 });

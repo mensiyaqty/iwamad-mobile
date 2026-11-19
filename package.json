@@ -10,6 +10,7 @@
   },
   "main": "index.ts",
   "dependencies": {
+    "@tanstack/react-query": "^5.108.0",
     "expo": "~58.0.25",
     "expo-constants": "~58.0.16",
     "expo-linking": "~58.0.17",

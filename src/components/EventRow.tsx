@@ -1,9 +1,9 @@
 import React from 'react';
 import { StyleSheet, Text, Pressable, View } from 'react-native';
-import { EventItem } from '../data/events';
+import type { CampusEvent } from '../data/events';
 
 interface EventRowProps {
-  event: EventItem;
+  event: CampusEvent;
   isSaved: boolean;
   onPress: () => void;
   onLongPress: () => void;

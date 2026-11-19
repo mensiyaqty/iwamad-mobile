@@ -1,11 +1,39 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, Pressable } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { EVENTS } from '../../src/data/events';
+import { useEvents } from '../../src/hooks/useEvents';
 
 export default function EventDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const event = EVENTS.find((item) => item.id === Number(id));
+  const { data, isPending, isError, error, refetch } = useEvents();
+
+  if (isPending) {
+    return (
+      <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Event' }} />
+        <ActivityIndicator size="large" />
+        <Text style={styles.statusText}>Loading events</Text>
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.centerContainer}>
+        <Stack.Screen options={{ title: 'Event' }} />
+        <Text style={styles.notFoundTitle}>Could not load events</Text>
+        <Text style={styles.detailText}>{error.message}</Text>
+        <Pressable
+          onPress={() => refetch()}
+          style={({ pressed }) => [styles.retryButton, pressed && styles.retryPressed]}
+        >
+          <Text style={styles.retryText}>Try again</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const event = (data ?? []).find((item) => item.id === Number(id));
 
   if (!event) {
     return (
@@ -34,6 +62,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 20,
   },
+  centerContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  statusText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#333',
+  },
   title: {
     fontSize: 26,
     fontWeight: 'bold',
@@ -48,5 +88,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginBottom: 8,
     color: '#333',
+  },
+  retryButton: {
+    minHeight: 44,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  retryPressed: {
+    opacity: 0.75,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
